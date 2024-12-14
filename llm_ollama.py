@@ -1,4 +1,5 @@
 import contextlib
+import os
 from collections import defaultdict
 from typing import List, Optional, Tuple
 
@@ -129,8 +130,10 @@ class Ollama(llm.Model):
         if json_object:
             kwargs["format"] = "json"
 
+        client = _client()
+
         if stream:
-            response_stream = ollama.chat(
+            response_stream = client.chat(
                 model=self.model_id,
                 messages=messages,
                 stream=True,
@@ -141,7 +144,7 @@ class Ollama(llm.Model):
                 with contextlib.suppress(KeyError):
                     yield chunk["message"]["content"]
         else:
-            response.response_json = ollama.chat(
+            response.response_json = client.chat(
                 model=self.model_id,
                 messages=messages,
                 options=options,
@@ -215,6 +218,14 @@ def _get_ollama_models() -> List[dict]:
 
     """
     try:
-        return ollama.list()["models"]
+        return _client().list()["models"]
     except:
         return []
+
+
+def _client() -> ollama.Client:
+    ollama_host = os.getenv('OLLAMA_HOST')
+    if ollama_host:
+        return ollama.Client(host=ollama_host)
+    else:
+        return ollama.Client()
